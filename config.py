@@ -17,10 +17,9 @@ class Constants:
 class Variables:
     image_input_size_height = 256
     image_input_size_width = 128
-    encoding_dim = 256
     init_weight_file_address = None
     models = ['full_denoising', 'central_denoising', 'central_reconstruction']
-    model_name = models[0]
+    model_name = models[1]
     noise_type = 'gaussian'
     start_epoch = 0
     end_epoch = 150

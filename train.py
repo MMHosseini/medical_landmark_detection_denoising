@@ -13,7 +13,7 @@ class Train:
         model_generator = ModelGenerator()
         model = model_generator.create_autoencoder()
         # model.Complie(optimizer='adam', loss='binary_crossentropy')
-        if Variables.init_weight_file_address is not '' and Variables.init_weight_file_address is not None:
+        if Variables.init_weight_file_address != '' and Variables.init_weight_file_address is not None:
             weight_address = Constants.weight_pass + Variables.model_name + '/' + Variables.init_weight_file_address
             model.load_weights(weight_address)
         loss_function = CustomLoss()
@@ -62,23 +62,30 @@ class Train:
             info = np.load(Constants.train_path_noisy + file, allow_pickle=True)
             info = info.item()
             if Variables.model_name == 'full_denoising':
-                source_batch.append(info['full_noisy'])
-                target_batch.append(info['image'])
+                noisy = info['full_noisy']
+                clear = info['image']
+                source_batch.append(noisy)
+                target_batch.append(clear)
 
             elif Variables.model_name == 'central_denoising':
-                source_batch.append(info['patched_noisy'])
-                target_batch.append(info['patched_non_noisy'])
+                noisy = info['patched_noisy']
+                clear = info['patched_non_noisy']
+                [source_batch.append(patch) for patch in noisy]
+                [target_batch.append(patch) for patch in clear]
 
             elif Variables.model_name == 'central_reconstruction':
-                source_batch.append(info['patched_destroyed'])
-                target_batch.append(info['patched_non_destroyed'])
+                noisy = info['patched_destroyed']
+                clear = info['patched_non_destroyed']
+                [source_batch.append(patch) for patch in noisy]
+                [target_batch.append(patch) for patch in clear]
 
         source_batch = np.array(source_batch)
-        source_batch = np.expand_dims(source_batch, axis=-1)
         source_batch = source_batch / 255.0
+        source_batch = np.expand_dims(source_batch, axis=-1)
+
         target_batch = np.array(target_batch)
-        target_batch = np.expand_dims(target_batch, axis=-1)
         target_batch = target_batch / 255.0
+        target_batch = np.expand_dims(target_batch, axis=-1)
 
         return source_batch, target_batch
 
