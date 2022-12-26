@@ -48,7 +48,10 @@ class Train:
         return loss
 
     def _get_optimizer(self, lr=1e-2, beta_1=0.9, beta_2=0.999, decay=1e-5):
-        optimizer = tf.keras.optimizers.Adam(learning_rate=lr, beta_1=beta_1, beta_2=beta_2, weight_decay=decay)
+        try:
+            optimizer = tf.keras.optimizers.Adam(learning_rate=lr, beta_1=beta_1, beta_2=beta_2, weight_decay=decay)
+        except:
+            optimizer = tf.keras.optimizers.Adam(learning_rate=lr, beta_1=beta_1, beta_2=beta_2, decay=decay)
         return optimizer
 
     def _get_batch_samples(self, batch_index, file_names):
