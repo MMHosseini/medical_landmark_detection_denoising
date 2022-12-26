@@ -23,8 +23,8 @@ class Variables:
     model_name = models[0]
     noise_type = 'gaussian'
     start_epoch = 0
-    end_epoch = 100
-    batch_size = 10
+    end_epoch = 150
+    batch_size = 100
     patch_height = 16
     patch_width = 16
     noisy_area = 0.3
