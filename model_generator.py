@@ -5,19 +5,11 @@ from config import Constants, Variables
 
 class ModelGenerator:
     def create_autoencoder(self):
-        models = Variables.models['full_denoising', 'central_denoising', 'central_reconstruction']
         model_name = Variables.model_name
         if model_name == 'full_denoising':
             input_shape = (Variables.image_input_size_height, Variables.image_input_size_width, 1)
         elif model_name == 'central_denoising' or model_name == 'central_reconstruction':
-            check_height = Variables.image_input_size_height % Variables.num_batches[0] == 0
-            check_width = Variables.image_input_size_width % Variables.num_batches[1] == 0
-            if not (check_height and check_width):
-                print('Error in creating autoencoder: patch size is not consistent')
-                return
-            height = Variables.image_input_size_height / Variables.num_batches[0]
-            width = Variables.image_input_size_width / Variables.num_batches[1]
-            input_shape = (height, width, 3)
+            input_shape = (Variables.patch_height, Variables.patch_width, 1)
         input_img = Input(shape=input_shape, name='input')
         encode = self.__encoder(input_img)
         decode = self.__decoder(encode)

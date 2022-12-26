@@ -22,9 +22,9 @@ class Variables:
     models = ['full_denoising', 'central_denoising', 'central_reconstruction']
     model_name = models[0]
     noise_type = 'gaussian'
-    num_epochs = 100
-    num_batches = 100
-    # num_patches = (16, 8)
+    start_epoch = 0
+    end_epoch = 100
+    batch_size = 10
     patch_height = 16
     patch_width = 16
     noisy_area = 0.3

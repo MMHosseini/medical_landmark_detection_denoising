@@ -2,7 +2,7 @@ import os
 from config import Constants, Variables
 import cv2
 import numpy as np
-import glob
+from tqdm import tqdm
 
 
 class DataHelper:
@@ -13,19 +13,20 @@ class DataHelper:
         test_path_noisy = Constants.test_path_noisy
         train_image_name = os.listdir(train_path)
         test_image_name = os.listdir(test_path)
-        self.create_set(train_image_name, train_path, train_path_noisy)
-        self.create_set(test_image_name, test_path, test_path_noisy)
+        self._create_set(train_image_name, train_path, train_path_noisy)
+        self._create_set(test_image_name, test_path, test_path_noisy)
 
-    def create_set(self, names, source_path, target_path):
+    def _create_set(self, names, source_path, target_path):
         if not os.path.isdir(target_path):
             os.mkdir(target_path)
 
-        for name in names:
+        for name in tqdm(names):
             if not name.endswith('.jpg'):
                 continue
+            name = name.split('.jpg')[0]
             info = dict()
-            source_adr = source_path + name
-            target_adr = target_path + name
+            source_adr = source_path + name + '.jpg'
+            target_adr = target_path + name + '.npy'
             image = cv2.imread(source_adr)
             image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
             image = self._resize_image(image)
@@ -179,3 +180,14 @@ class DataHelper:
         noisy_image[noisy_image > 255] = 255
         noisy_image = np.round(noisy_image).astype('uint8')
         return noisy_image
+
+    def create_source_and_target(self, path):
+        source_images = []
+        target_images = []
+
+        files = os.listdir(path)
+        for file in files:
+            info = np.load(path + '/' + file)
+            info = info.item()
+
+
