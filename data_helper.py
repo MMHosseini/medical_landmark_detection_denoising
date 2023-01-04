@@ -16,6 +16,13 @@ class DataHelper:
         self._create_set(train_image_name, train_path, train_path_noisy)
         self._create_set(test_image_name, test_path, test_path_noisy)
 
+    def depatch_image(self, patches):
+        border, uncovered_area = self._depatch_border(patches)
+        center, mask = self._depatch_center(patches)
+        reconstructed = (center * mask) + (border * (1 - mask))
+        reconstructed = np.round(reconstructed)
+        return reconstructed, uncovered_area
+
     def _create_set(self, names, source_path, target_path):
         if not os.path.isdir(target_path):
             os.mkdir(target_path)
@@ -181,13 +188,110 @@ class DataHelper:
         noisy_image = np.round(noisy_image).astype('uint8')
         return noisy_image
 
-    def create_source_and_target(self, path):
-        source_images = []
-        target_images = []
+    def _depatch_border(self, patches):
+        patches = patches[:, :, :, 0]
+        patch_height = Variables.patch_height
+        patch_width = Variables.patch_width
 
-        files = os.listdir(path)
-        for file in files:
-            info = np.load(path + '/' + file)
-            info = info.item()
+        center = (patch_height // 2, patch_width // 2)
 
+        if Variables.model_name == 'central_denoising':
+            manipulated_area = Variables.noisy_area
+        elif Variables.model_name == 'central_reconstruction':
+            manipulated_area = Variables.destroyed_area
 
+        manipulated_area_x_start = center[0] - round((manipulated_area / 2) * patch_height)
+        manipulated_area_x_end = center[0] + round((manipulated_area / 2) * patch_height) + 1
+        manipulated_area_y_start = center[1] - round((manipulated_area / 2) * patch_width)
+        manipulated_area_y_end = center[1] + round((manipulated_area / 2) * patch_width) + 1
+
+        manipulated_area_height = manipulated_area_x_end - manipulated_area_x_start
+        manipulated_area_width = manipulated_area_y_end - manipulated_area_y_start
+
+        image_width = Variables.image_input_size_width
+        image_height = Variables.image_input_size_height
+        image = np.zeros((image_height, image_width))
+        mask = np.zeros((image_height, image_width))
+
+        num_hor_patches = (image_width-(patch_width-manipulated_area_width)) // manipulated_area_width
+        num_ver_patches = (image_height-(patch_height-manipulated_area_height)) // manipulated_area_height
+
+        patch_mask = np.ones((patch_width, patch_height))
+
+        counter = 0
+        x_start = -manipulated_area_height
+        x_end = x_start + patch_height
+        for i in range(num_ver_patches):
+            x_start += manipulated_area_height
+            x_end += manipulated_area_height
+            y_start = -manipulated_area_width
+            y_end = y_start + patch_width
+            for j in range(num_hor_patches):
+                y_start += manipulated_area_width
+                y_end += manipulated_area_width
+                image[x_start:x_end, y_start:y_end] += patches[counter]
+                mask[x_start:x_end, y_start:y_end] += patch_mask
+                counter += 1
+
+        uncovered_area = mask.copy()
+        uncovered_area[uncovered_area == 0] = 255
+        uncovered_area[uncovered_area < 255] = 0
+        uncovered_area[uncovered_area == 255] = 1
+
+        mask[mask == 0] = 1  # avoid divide by zero
+        border = np.divide(image, mask)
+        # border[manipulated_area_x_start:image_height-(patch_height - manipulated_area_x_end),
+        #     manipulated_area_y_start:image_width-(patch_width - manipulated_area_y_end)] = 0
+        return border, uncovered_area
+
+    def _depatch_center(self, patches):
+        patches = patches[:, :, :, 0]
+        patch_height = Variables.patch_height
+        patch_width = Variables.patch_width
+
+        center = (patch_height // 2, patch_width // 2)
+
+        if Variables.model_name == 'central_denoising':
+            manipulated_area = Variables.noisy_area
+        elif Variables.model_name == 'central_reconstruction':
+            manipulated_area = Variables.destroyed_area
+        else:
+            print('Error in DataHelper --> depatch_image: This is not a patch-based model')
+            return
+
+        manipulated_area_x_start = center[0] - round((manipulated_area / 2) * patch_height)
+        manipulated_area_x_end = center[0] + round((manipulated_area / 2) * patch_height) + 1
+        manipulated_area_y_start = center[1] - round((manipulated_area / 2) * patch_width)
+        manipulated_area_y_end = center[1] + round((manipulated_area / 2) * patch_width) + 1
+
+        manipulated_area_height = manipulated_area_x_end - manipulated_area_x_start
+        manipulated_area_width = manipulated_area_y_end - manipulated_area_y_start
+
+        image_width = Variables.image_input_size_width
+        image_height = Variables.image_input_size_height
+        image = np.zeros((image_height, image_width))
+        mask = np.zeros((image_height, image_width))
+
+        num_hor_patches = (image_width-(patch_width-manipulated_area_width)) // manipulated_area_width
+        num_ver_patches = (image_height-(patch_height-manipulated_area_height)) // manipulated_area_height
+
+        patch_mask = np.ones((patch_width, patch_height))
+
+        counter = 0
+        x_start = manipulated_area_x_start - manipulated_area_height
+        x_end = x_start + manipulated_area_height
+        for i in range(num_ver_patches):
+            x_start += manipulated_area_height
+            x_end += manipulated_area_height
+            y_start = manipulated_area_y_start - manipulated_area_width
+            y_end = y_start + manipulated_area_width
+            for j in range(num_hor_patches):
+                y_start += manipulated_area_width
+                y_end += manipulated_area_width
+                image[x_start:x_end, y_start:y_end] += patches[counter, manipulated_area_x_start:manipulated_area_x_end,
+                                                       manipulated_area_y_start:manipulated_area_y_end]
+                mask[x_start:x_end, y_start:y_end] += patch_mask[manipulated_area_x_start:manipulated_area_x_end,
+                                                       manipulated_area_y_start:manipulated_area_y_end]
+                counter += 1
+
+        return image, mask
